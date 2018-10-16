@@ -8,6 +8,11 @@
 using namespace cv;
 using namespace std;
 
+int largest_area = 0;
+int largest_contour_index = 0;
+Rect bounding_rect;
+int totalFrame = 0;
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -52,13 +57,67 @@ void MainWindow::initCamera()
 
 void MainWindow::displayImage(int /* id */, QImage image)
 {
-    Mat src = qImage2cvMat(image);
-    GaussianBlur(src, src, Size(3,3), 0, 0);
-    Mat dst1;
-    Canny(src, dst1, 50, 150, 3);
-    QImage dstImage = cvMat2QImage(dst1);
-    ui->label->setPixmap(QPixmap::fromImage(dstImage));
+    totalFrame++;
+    Mat source = qImage2cvMat(image);
+    Mat matDst = Mat::zeros(source.rows, source.cols, CV_8UC3);
+    Mat matGaussianBlur;
+    GaussianBlur(source, matGaussianBlur, Size(3,3), 0, 0);
+    Mat matCanny;
+    Canny(matGaussianBlur, matCanny, 50, 150, 3);
+
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+    findContours(matCanny, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+//        for(int i = 0; i < contours.size(); i++) // Iterate through each contour
+//        {
+//            double a = contourArea(contours[i], false); // Find the area of contour
+//            if( a > largest_area){
+//                largest_area = a;
+//                largest_contour_index = i; // Store the index of largest contour
+//                bounding_rect = boundingRect(contours[i]); // Find the bounding rectangle for biggest contour
+//            }
+//        }
+
+    for(int i = 0 ; i < contours.size() ; i++)
+    {
+        Scalar color(255,0,0,255);
+        drawContours(matDst, contours, i, color, CV_FILLED, 8, hierarchy);
+        qDebug() << bounding_rect.height * bounding_rect.width;
+        if (boundingRect(contours[i]).height * boundingRect(contours[i]).width > 20000 && totalFrame%33 == 0)
+        {
+            bounding_rect = boundingRect(contours[i]);
+        }
+        rectangle(source, bounding_rect.tl(), bounding_rect.br(), Scalar(125,125,125), 2, 8, 0);
+    }
+
+    QImage imageDst = cvMat2QImage(source);
+    ui->label->setPixmap(QPixmap::fromImage(imageDst));
 }
+
+//find1
+//vector<vector<Point> > contours;
+//vector<Vec4i> hierarchy;
+//findContours(matCanny, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+//for(int i = 0; i < contours.size(); i++) // Iterate through each contour
+//{
+//    double a = contourArea(contours[i], false); // Find the area of contour
+//    if( a > largest_area){
+//        largest_area = a;
+//        largest_contour_index = i; // Store the index of largest contour
+//        bounding_rect = boundingRect(contours[i]); // Find the bounding rectangle for biggest contour
+//    }
+//}
+
+//for(int i = 0 ; i < contours.size() ; i++)
+//{
+//    Scalar color(255,0,0,255);
+//    drawContours(matDst, contours, i, color, CV_FILLED, 8, hierarchy);
+//}
+//    qDebug() << "area size " << largest_area << bounding_rect.height << bounding_rect.width;
+//    if (bounding_rect.height * bounding_rect.width > 700)
+//rectangle(matDst, bounding_rect, Scalar(0,255,0), 1, 8, 0);
 
 void MainWindow::videoFrameCapture()
 {
@@ -99,7 +158,6 @@ QImage MainWindow::cvMat2QImage(const cv::Mat& mat)
     }
     else if(mat.type() == CV_8UC4)
     {
-        qDebug() << "CV_8UC4";
         // Copy input Mat
         const uchar *pSrc = (const uchar*)mat.data;
         // Create QImage with same dimensions as input Mat
@@ -116,7 +174,6 @@ QImage MainWindow::cvMat2QImage(const cv::Mat& mat)
 cv::Mat MainWindow::qImage2cvMat(QImage image)
 {
     cv::Mat mat;
-    qDebug() << image.format();
     switch(image.format())
     {
     case QImage::Format_ARGB32:
