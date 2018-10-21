@@ -9,11 +9,9 @@
 using namespace cv;
 using namespace std;
 
-int largest_area = 0;
-int largest_contour_index = 0;
-QList<Rect> bounding_rect_temp_list;
-QList<Rect> bounding_rect_list;
-Rect bounding_rect;
+QList<Rect> m_boundingRectTempList;
+QList<Rect> m_boundingRectList;
+Rect m_boundingRect;
 int totalFrame = 0;
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -68,7 +66,7 @@ void MainWindow::displayImage(int /* id */, QImage image)
     Mat matCanny;
     Canny(matGaussianBlur, matCanny, 50, 150);
     Mat matDilate;
-    dilate(matCanny,matDilate,getStructuringElement(MORPH_RECT, Size(30,30)));
+    dilate(matCanny,matDilate,getStructuringElement(MORPH_RECT, Size(13,13)));
 
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
@@ -78,20 +76,20 @@ void MainWindow::displayImage(int /* id */, QImage image)
     {
         Scalar color(255,0,0,255);
         drawContours(matDst, contours, i, color, CV_FILLED, 8, hierarchy);
-        if (boundingRect(contours[i]).height * boundingRect(contours[i]).width > 30000 && totalFrame%33 == 0)
+        if (boundingRect(contours[i]).height * boundingRect(contours[i]).width > 20000 && totalFrame%16 == 0)
         {
-            bounding_rect = boundingRect(contours[i]);
-            bounding_rect_temp_list.push_back(bounding_rect);
+            m_boundingRect = boundingRect(contours[i]);
+            m_boundingRectTempList.push_back(m_boundingRect);
         }
     }
-    if (bounding_rect_temp_list.count() > 0)
+    if (m_boundingRectTempList.count() > 0)
     {
-        bounding_rect_list = bounding_rect_temp_list;
-        bounding_rect_temp_list.clear();
+        m_boundingRectList = m_boundingRectTempList;
+        m_boundingRectTempList.clear();
     }
-    for (int j = 0 ; j < bounding_rect_list.size() ; j++ )
+    for (int j = 0 ; j < m_boundingRectList.size() ; j++ )
     {
-        rectangle(source, bounding_rect_list.value(j).tl(), bounding_rect_list.value(j).br(), Scalar(125,125,125), 2, 8, 0);
+        rectangle(source, m_boundingRectList.value(j).tl(), m_boundingRectList.value(j).br(), Scalar(125,125,125), 2, 8, 0);
     }
 
     QImage imageDst = cvMat2QImage(source);
