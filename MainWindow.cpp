@@ -9,9 +9,9 @@
 using namespace cv;
 using namespace std;
 
-QList<Rect> m_boundingRectTempList;
-QList<Rect> m_boundingRectList;
-Rect m_boundingRect;
+QList<vector<Point>> m_contourTempList;
+QList<vector<Point>> m_contourList;
+vector<vector<Point>>hull(200);
 int totalFrame = 0;
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -33,7 +33,8 @@ void MainWindow::initCamera()
     QByteArray logitechC930;
     for (int i = 0 ; i < availableCameras.count() ; i++)
     {
-        if (!availableCameras.value(i).description().compare("Logitech Webcam C930e"))
+        //      if (!availableCameras.value(i).description().compare("Logitech Webcam C930e"))
+        if (!availableCameras.value(i).description().compare("USB 視訊裝置"))
         {
             logitechC930 = availableCameras.value(i).deviceName().toUtf8();
         }
@@ -61,6 +62,7 @@ void MainWindow::displayImage(int /* id */, QImage image)
     totalFrame++;
     Mat source = qImage2cvMat(image);
     Mat matDst = Mat::zeros(source.rows, source.cols, CV_8UC3);
+    Mat matResult = Mat::zeros(source.rows, source.cols, CV_8UC3);
     Mat matGaussianBlur;
     GaussianBlur(source, matGaussianBlur, Size(3,3), 10, 0);
     Mat matCanny;
@@ -68,30 +70,35 @@ void MainWindow::displayImage(int /* id */, QImage image)
     Mat matDilate;
     dilate(matCanny,matDilate,getStructuringElement(MORPH_RECT, Size(13,13)));
 
-    vector<vector<Point> > contours;
+    vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
     findContours(matDilate, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
     for(int i = 0 ; i < contours.size() ; i++)
     {
-        Scalar color(255,0,0,255);
-        drawContours(matDst, contours, i, color, CV_FILLED, 8, hierarchy);
         if (boundingRect(contours[i]).height * boundingRect(contours[i]).width > 20000 && totalFrame%16 == 0)
         {
-            m_boundingRect = boundingRect(contours[i]);
-            m_boundingRectTempList.push_back(m_boundingRect);
+            m_contourTempList.push_back(contours[i]);
         }
     }
-    if (m_boundingRectTempList.count() > 0)
+    if (m_contourTempList.count() > 0)
     {
-        m_boundingRectList = m_boundingRectTempList;
-        m_boundingRectTempList.clear();
+        m_contourList = m_contourTempList;
+        m_contourTempList.clear();
     }
-    for (int j = 0 ; j < m_boundingRectList.size() ; j++ )
+    for (int j = 0 ; j < m_contourList.size() ; j++ )
     {
-        rectangle(source, m_boundingRectList.value(j).tl(), m_boundingRectList.value(j).br(), Scalar(125,125,125), 2, 8, 0);
+        RotatedRect  min = minAreaRect(m_contourList.value(j));
+        qDebug() << min.angle;
+        rectangle(source, min.boundingRect().tl(), min.boundingRect().br(), Scalar(125,125,125), 2, 8, 0);
+        //        drawContours( source, hull, j, Scalar(125,125,125), 1, 8, vector<Vec4i>(), 0, Point());
+//        drawContours(matDst, contours, j, Scalar(125,125,125), CV_FILLED, 8, hierarchy);
+//        double comres = 1;
+//        comres = matchShapes(contours[j], contours[j], CV_CONTOURS_MATCH_I1, 0.0);
+//        qDebug() << "Mike " << comres;
+//        bool isConvex = isContourConvex(contours[j]);
+        qDebug() << "Mike " << m_contourList.value(j).size();
     }
-
     QImage imageDst = cvMat2QImage(source);
     ui->label->setPixmap(QPixmap::fromImage(imageDst));
 }
