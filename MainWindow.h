@@ -33,6 +33,12 @@ private slots:
     cv::Mat qImage2cvMat(QImage image);
     QImage cvMat2QImage(const cv::Mat& mat);
 
+    void on_pushButton_clicked();
+
+    void on_pushButton_2_clicked();
+
+    void on_pushButton_3_clicked();
+
 private:
     Ui::MainWindow *ui;
     QCameraImageCapture *m_cameraImgCapture;

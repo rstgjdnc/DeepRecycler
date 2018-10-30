@@ -12,6 +12,8 @@ using namespace std;
 QList<vector<Point>> m_contourTempList;
 QList<vector<Point>> m_contourList;
 vector<vector<Point>>hull(200);
+vector<Point> contour_1;
+vector<Point> contour_2;
 int totalFrame = 0;
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -61,24 +63,28 @@ void MainWindow::displayImage(int /* id */, QImage image)
 {
     totalFrame++;
     Mat source = qImage2cvMat(image);
-    Mat matDst = Mat::zeros(source.rows, source.cols, CV_8UC3);
-    Mat matResult = Mat::zeros(source.rows, source.cols, CV_8UC3);
+    //    Mat matDst = Mat::zeros(source.rows, source.cols, CV_8UC3);
     Mat matGaussianBlur;
     GaussianBlur(source, matGaussianBlur, Size(3,3), 10, 0);
     Mat matCanny;
     Canny(matGaussianBlur, matCanny, 50, 150);
     Mat matDilate;
-    dilate(matCanny,matDilate,getStructuringElement(MORPH_RECT, Size(13,13)));
+    dilate(matCanny,matDilate,getStructuringElement(MORPH_RECT, Size(15,15)));
 
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
     findContours(matDilate, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
+    // 符合條件的 Contours
     for(int i = 0 ; i < contours.size() ; i++)
     {
-        if (boundingRect(contours[i]).height * boundingRect(contours[i]).width > 20000 && totalFrame%16 == 0)
+        if (totalFrame%16 == 0)
         {
-            m_contourTempList.push_back(contours[i]);
+            RotatedRect m_minContours = minAreaRect(contours[i]);
+            if (m_minContours.size.width * m_minContours.size.height > 20000)
+            {
+                m_contourTempList.push_back(contours[i]);
+            }
         }
     }
     if (m_contourTempList.count() > 0)
@@ -88,16 +94,23 @@ void MainWindow::displayImage(int /* id */, QImage image)
     }
     for (int j = 0 ; j < m_contourList.size() ; j++ )
     {
-        RotatedRect  min = minAreaRect(m_contourList.value(j));
-        qDebug() << min.angle;
-        rectangle(source, min.boundingRect().tl(), min.boundingRect().br(), Scalar(125,125,125), 2, 8, 0);
-        //        drawContours( source, hull, j, Scalar(125,125,125), 1, 8, vector<Vec4i>(), 0, Point());
-//        drawContours(matDst, contours, j, Scalar(125,125,125), CV_FILLED, 8, hierarchy);
-//        double comres = 1;
-//        comres = matchShapes(contours[j], contours[j], CV_CONTOURS_MATCH_I1, 0.0);
-//        qDebug() << "Mike " << comres;
-//        bool isConvex = isContourConvex(contours[j]);
-        qDebug() << "Mike " << m_contourList.value(j).size();
+        //        double ration =0;
+        //        RotatedRect  min = minAreaRect(m_contourList.value(j));
+        //        qDebug() << min.size.width << min.size.height;
+        //        if (min.size.width >= min.size.height)
+        //        {
+        //           ration =  min.size.width / min.size.height;
+        //        }
+        Rect rectContour = boundingRect(m_contourList.value(j));
+        rectangle(source, rectContour.tl(), rectContour.br(), Scalar(125,125,125), 2, 8, 0);
+        int text_x = rectContour.tl().x + 10 ;
+        int text_y = rectContour.tl().y + 30;
+        putText(source, "Mike", Point(text_x,text_y), FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, LINE_AA);
+        //        drawContours(matDst, contours, j, Scalar(125,125,125), CV_FILLED, 8, hierarchy);
+        //        double comres = 1;
+        //        comres = matchShapes(contours[j], contours[j], CV_CONTOURS_MATCH_I1, 0.0);
+        //        qDebug() << "Mike " << comres;
+        //        bool isConvex = isContourConvex(contours[j]);
     }
     QImage imageDst = cvMat2QImage(source);
     ui->label->setPixmap(QPixmap::fromImage(imageDst));
@@ -174,4 +187,21 @@ cv::Mat MainWindow::qImage2cvMat(QImage image)
         break;
     }
     return mat;
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    contour_1 = m_contourList.value(0);
+}
+
+void MainWindow::on_pushButton_2_clicked()
+{
+    contour_2 = m_contourList.value(0);
+}
+
+void MainWindow::on_pushButton_3_clicked()
+{
+    double comres = 1;
+    comres = matchShapes(contour_1, contour_2, CV_CONTOURS_MATCH_I1, 0.0);
+    qDebug() << "Mike " << comres;
 }
